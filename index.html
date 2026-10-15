@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Metronome Studio — 800 BPM Precision Utility</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-panel: #14171c;
+            --bg-inset: #0c0e12;
+            --border-subtle: #262b36;
+            --accent-amber: #f59e0b;
+            --accent-cyan: #06b6d4;
+            --accent-emerald: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #090b0e;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(30, 41, 59, 0.45) 0%, transparent 70%),
+                linear-gradient(180deg, #090b0e 0%, #0d1015 100%);
+            color: #e2e8f0;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom Range Sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            border-radius: 999px;
+            background: #0b0d11;
+            border: 1px solid #252a34;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(180deg, #f8fafc 0%, #cbd5e1 100%);
+            border: 2px solid #0f172a;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.15);
+            margin-top: -6px;
+            transition: transform 0.1s ease, background-color 0.15s ease;
+        }
+
+        input[type="range"]:hover::-webkit-slider-thumb {
+            transform: scale(1.08);
+            background: #ffffff;
+        }
+
+        input[type="range"]:active::-webkit-slider-thumb {
+            transform: scale(0.96);
+            background: #38bdf8;
+        }
+
+        /* LED Indicators */
+        .led-bulb {
+            width: 16px;
+            height: 16px;
+            border-radius: 9999px;
+            background: #161920;
+            border: 1px solid #2b313d;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.75);
+            transition: background-color 0.03s ease, box-shadow 0.03s ease, transform 0.03s ease;
+        }
+
+        .led-active-1 {
+            background: #fbbf24 !important;
+            border-color: #fef08a !important;
+            box-shadow: 0 0 14px #f59e0b, 0 0 28px rgba(245, 158, 11, 0.55), inset 0 0 6px #ffffff !important;
+            transform: scale(1.1);
+        }
+
+        .led-active-2 {
+            background: #38bdf8 !important;
+            border-color: #bae6fd !important;
+            box-shadow: 0 0 14px #0ea5e9, 0 0 26px rgba(14, 165, 233, 0.5), inset 0 0 6px #ffffff !important;
+            transform: scale(1.08);
+        }
+
+        .led-active-3 {
+            background: #34d399 !important;
+            border-color: #a7f3d0 !important;
+            box-shadow: 0 0 14px #10b981, 0 0 24px rgba(16, 185, 129, 0.45), inset 0 0 6px #ffffff !important;
+            transform: scale(1.08);
+        }
+
+        .led-active-0 {
+            background: #64748b !important;
+            border-color: #94a3b8 !important;
+            box-shadow: 0 0 8px rgba(148, 163, 184, 0.4) !important;
+        }
+
+        /* Remove number input spinners */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* Custom Scrollbar for step pills */
+        ::-webkit-scrollbar {
+            height: 5px;
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0c0e12;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #262b36;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-3 sm:p-6">
+
+    <!-- Main Utility Window -->
+    <div id="appWindow" class="w-full max-w-[460px] bg-[#141820] border border-[#283040] rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden transition-shadow duration-75">
+        
+        <!-- Window Title Bar -->
+        <div class="bg-gradient-to-b from-[#1e2430] to-[#161b24] px-4 py-2.5 border-b border-[#262d3d] flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <!-- Metronome SVG Icon -->
+                <div class="w-6 h-6 rounded-md bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-inner">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M6 20h12L15 4H9L6 20z" stroke-linejoin="round"/>
+                        <path d="M12 17l5-10" stroke-linecap="round"/>
+                        <circle cx="15.5" cy="9.5" r="1.5" fill="currentColor"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xs font-bold tracking-wider uppercase text-slate-200 flex items-center gap-2">
+                        Open Metronome
+                        <span class="text-[10px] mono font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30">800 BPM PRO</span>
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Top Menu Links (Hotkeys / About) -->
+            <div class="flex items-center gap-1">
+                <button id="btnHotkeys" class="text-[11px] font-medium text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-slate-800/70 transition">
+                    Hotkeys
+                </button>
+                <button id="btnAbout" class="text-[11px] font-medium text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-slate-800/70 transition">
+                    About
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Body Content -->
+        <div class="p-4 sm:p-5 space-y-4">
+
+            <!-- Section 1: Mode Selection + Play Button -->
+            <div class="bg-[#0d1016] border border-[#222834] rounded-xl p-3.5 shadow-inner">
+                <div class="flex items-stretch justify-between gap-3">
+                    
+                    <!-- Left: Radio Modes -->
+                    <div class="flex-1 space-y-2.5">
+                        <!-- Mode 1: Straight Metronome -->
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center gap-2.5 cursor-pointer group">
+                                <input type="radio" name="metroMode" value="straight" class="w-4 h-4 accent-sky-500 cursor-pointer">
+                                <span class="text-xs sm:text-sm font-medium text-slate-200 group-hover:text-white transition">Straight Metronome</span>
+                            </label>
+
+                            <!-- Blink Checkbox -->
+                            <label class="flex items-center gap-1.5 cursor-pointer select-none bg-[#161b24] px-2 py-1 rounded border border-[#262f40] hover:border-slate-600 transition" title="Toggle visual blink flash">
+                                <input type="checkbox" id="chkBlink" checked class="w-3.5 h-3.5 accent-amber-500 rounded cursor-pointer">
+                                <span class="text-xs font-medium text-slate-300">Blink</span>
+                            </label>
+                        </div>
+
+                        <!-- Mode 2: Simple Measure -->
+                        <div class="flex items-center justify-between gap-2">
+                            <label class="flex items-center gap-2.5 cursor-pointer group">
+                                <input type="radio" name="metroMode" value="simple" checked class="w-4 h-4 accent-sky-500 cursor-pointer">
+                                <span class="text-xs sm:text-sm font-medium text-slate-200 group-hover:text-white transition">Simple Measure</span>
+                            </label>
+
+                            <!-- Stepper for Measure Beats -->
+                            <div class="flex items-center bg-[#151922] border border-[#2b3446] rounded-lg overflow-hidden">
+                                <button id="btnMeasureDec" type="button" class="px-2 py-1 text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition text-xs font-bold">−</button>
+                                <input id="inputMeasure" type="number" min="1" max="64" value="4" class="w-10 bg-transparent text-center mono text-xs sm:text-sm font-bold text-sky-400 focus:outline-none">
+                                <button id="btnMeasureInc" type="button" class="px-2 py-1 text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 transition text-xs font-bold">+</button>
+                            </div>
+                        </div>
+
+                        <!-- Mode 3: Custom Pattern -->
+                        <div class="space-y-1.5 pt-0.5">
+                            <div class="flex items-center gap-2.5">
+                                <label class="flex items-center gap-2.5 cursor-pointer group shrink-0">
+                                    <input type="radio" name="metroMode" value="custom" class="w-4 h-4 accent-sky-500 cursor-pointer">
+                                    <span class="text-xs sm:text-sm font-medium text-slate-200 group-hover:text-white transition">Custom</span>
+                                </label>
+                                <div class="relative flex-1">
+                                    <input 
+                                        id="inputCustom" 
+                                        type="text" 
+                                        value="31212012121" 
+                                        maxlength="64"
+                                        placeholder="e.g. 31212012121"
+                                        spellcheck="false"
+                                        autocomplete="off"
+                                        class="w-full bg-[#151922] border border-[#2b3446] focus:border-sky-500 rounded-lg px-2.5 py-1 mono text-xs sm:text-sm tracking-wider text-amber-300 placeholder-slate-600 focus:outline-none transition"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Master Play / Stop Button -->
+                    <button id="btnPlay" type="button" class="w-24 sm:w-28 shrink-0 rounded-xl font-bold text-sm tracking-wide flex flex-col items-center justify-center gap-1.5 border transition-all duration-150 shadow-lg bg-gradient-to-b from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 active:scale-[0.98] text-slate-950 border-sky-400/50 shadow-sky-950/50">
+                        <svg id="iconPlay" class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        <svg id="iconStop" class="w-6 h-6 fill-current hidden" viewBox="0 0 24 24">
+                            <rect x="6" y="6" width="12" height="12" rx="1.5"/>
+                        </svg>
+                        <span id="txtPlay">Play</span>
+                    </button>
+                </div>
+
+                <!-- Quick Pattern Helper Bar (for Custom Mode) -->
+                <div class="mt-3 pt-2.5 border-t border-[#1b202b] flex items-center justify-between gap-1.5 flex-wrap">
+                    <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-500">Quick Custom:</span>
+                    <div class="flex items-center gap-1 flex-wrap">
+                        <button type="button" data-pattern="31212012121" class="pattern-chip text-[10px] mono px-1.5 py-0.5 rounded bg-[#171c26] hover:bg-[#222938] text-slate-300 border border-[#262f40] transition">31212012121</button>
+                        <button type="button" data-pattern="1212122" class="pattern-chip text-[10px] mono px-1.5 py-0.5 rounded bg-[#171c26] hover:bg-[#222938] text-slate-300 border border-[#262f40] transition" title="7/8 (2+2+3)">7/8 (1212122)</button>
+                        <button type="button" data-pattern="12212" class="pattern-chip text-[10px] mono px-1.5 py-0.5 rounded bg-[#171c26] hover:bg-[#222938] text-slate-300 border border-[#262f40] transition" title="5/4 (3+2)">5/4 (12212)</button>
+                        <button type="button" data-pattern="13332333" class="pattern-chip text-[10px] mono px-1.5 py-0.5 rounded bg-[#171c26] hover:bg-[#222938] text-slate-300 border border-[#262f40] transition" title="16th Subdivisions">16ths</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Studio Sound Legend & Live Sequence Visualizer -->
+            <div class="bg-[#0d1016] border border-[#222834] rounded-xl p-3.5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        Studio Click Voices (Click to Audition)
+                    </span>
+                    <span id="stepCounterBadge" class="text-[11px] mono font-semibold text-slate-400 bg-[#151a24] px-2 py-0.5 rounded border border-[#242c3d]">
+                        Step: <strong id="currentStepText" class="text-slate-200">- / -</strong>
+                    </span>
+                </div>
+
+                <!-- 4 Fixed Studio Voices + Individual LEDs -->
+                <div class="grid grid-cols-4 gap-2">
+                    <!-- Voice 1: High Accent -->
+                    <button type="button" data-preview="1" class="voice-preview-btn group bg-[#141923] hover:bg-[#1b2230] active:scale-95 border border-[#252d3d] rounded-lg p-2 flex flex-col items-center gap-1.5 transition">
+                        <div class="w-full flex items-center justify-between px-0.5">
+                            <span class="mono text-xs font-bold text-amber-400">1</span>
+                            <div id="led1" class="led-bulb"></div>
+                        </div>
+                        <span class="text-[10px] font-medium text-slate-300 group-hover:text-white">Hi Wood</span>
+                    </button>
+
+                    <!-- Voice 2: Low Woodblock -->
+                    <button type="button" data-preview="2" class="voice-preview-btn group bg-[#141923] hover:bg-[#1b2230] active:scale-95 border border-[#252d3d] rounded-lg p-2 flex flex-col items-center gap-1.5 transition">
+                        <div class="w-full flex items-center justify-between px-0.5">
+                            <span class="mono text-xs font-bold text-sky-400">2</span>
+                            <div id="led2" class="led-bulb"></div>
+                        </div>
+                        <span class="text-[10px] font-medium text-slate-300 group-hover:text-white">Lo Wood</span>
+                    </button>
+
+                    <!-- Voice 3: Sub / Rim Tick -->
+                    <button type="button" data-preview="3" class="voice-preview-btn group bg-[#141923] hover:bg-[#1b2230] active:scale-95 border border-[#252d3d] rounded-lg p-2 flex flex-col items-center gap-1.5 transition">
+                        <div class="w-full flex items-center justify-between px-0.5">
+                            <span class="mono text-xs font-bold text-emerald-400">3</span>
+                            <div id="led3" class="led-bulb"></div>
+                        </div>
+                        <span class="text-[10px] font-medium text-slate-300 group-hover:text-white">Sub Tick</span>
+                    </button>
+
+                    <!-- Voice 0: Rest / Silent -->
+                    <button type="button" data-preview="0" class="voice-preview-btn group bg-[#141923] hover:bg-[#1b2230] active:scale-95 border border-[#252d3d] rounded-lg p-2 flex flex-col items-center gap-1.5 transition">
+                        <div class="w-full flex items-center justify-between px-0.5">
+                            <span class="mono text-xs font-bold text-slate-500">0</span>
+                            <div id="led0" class="led-bulb"></div>
+                        </div>
+                        <span class="text-[10px] font-medium text-slate-400 group-hover:text-slate-200">Rest</span>
+                    </button>
+                </div>
+
+                <!-- Dynamic Step Sequence Matrix -->
+                <div class="pt-1">
+                    <div id="sequenceVisualizer" class="flex items-center gap-1.5 overflow-x-auto py-1.5 px-1 min-h-[38px] bg-[#090b0f] rounded-lg border border-[#1c222d]">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Master Volume Slider -->
+            <div class="bg-[#0d1016] border border-[#222834] rounded-xl p-3.5 space-y-2">
+                <div class="flex items-center justify-between">
+                    <label for="sliderVolume" class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                        Overall Volume
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <button id="btnMute" type="button" class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-[#181e29] hover:bg-[#232b3a] text-slate-400 hover:text-slate-200 border border-[#293244] transition">
+                            Mute
+                        </button>
+                        <span id="txtVolume" class="mono text-xs font-bold text-sky-400 w-11 text-right">100%</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <input id="sliderVolume" type="range" min="0" max="150" value="100" class="w-full">
+                </div>
+            </div>
+
+            <!-- Section 4: Tempo Control (20 - 800 BPM) -->
+            <div class="bg-[#0d1016] border border-[#222834] rounded-xl p-3.5 space-y-3">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <label for="inputBpm" class="text-xs font-semibold text-slate-300">Tempo</label>
+                        <span class="text-[10px] mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">MAX 800 BPM</span>
+                    </div>
+
+                    <!-- Fine Nudge + Tap Tempo -->
+                    <div class="flex items-center gap-1">
+                        <button type="button" data-bpm-delta="-5" class="bpm-nudge px-2 py-1 rounded bg-[#171c26] hover:bg-[#222938] active:scale-95 text-[11px] mono font-semibold text-slate-300 border border-[#273042] transition">-5</button>
+                        <button type="button" data-bpm-delta="-1" class="bpm-nudge px-2 py-1 rounded bg-[#171c26] hover:bg-[#222938] active:scale-95 text-[11px] mono font-semibold text-slate-300 border border-[#273042] transition">-1</button>
+                        <button type="button" data-bpm-delta="1" class="bpm-nudge px-2 py-1 rounded bg-[#171c26] hover:bg-[#222938] active:scale-95 text-[11px] mono font-semibold text-slate-300 border border-[#273042] transition">+1</button>
+                        <button type="button" data-bpm-delta="5" class="bpm-nudge px-2 py-1 rounded bg-[#171c26] hover:bg-[#222938] active:scale-95 text-[11px] mono font-semibold text-slate-300 border border-[#273042] transition">+5</button>
+                        <button id="btnTap" type="button" class="ml-1 px-2.5 py-1 rounded bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 text-[11px] font-bold text-amber-300 border border-amber-500/30 transition" title="Tap key 'T' or click repeatedly">
+                            TAP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tempo Slider + Exact Box -->
+                <div class="flex items-center gap-3">
+                    <input id="sliderBpm" type="range" min="20" max="800" value="439" class="flex-1">
+                    <div class="relative flex items-center">
+                        <input 
+                            id="inputBpm" 
+                            type="number" 
+                            min="20" 
+                            max="800" 
+                            value="439" 
+                            class="w-20 bg-[#151922] border border-[#2e384d] focus:border-amber-400 rounded-lg py-1.5 px-2 text-center mono text-base font-bold text-amber-400 focus:outline-none shadow-inner"
+                        >
+                    </div>
+                </div>
+
+                <!-- Quick Tempo Jump Markers -->
+                <div class="flex items-center justify-between text-[10px] mono text-slate-500 pt-0.5">
+                    <button type="button" data-bpm-set="60" class="bpm-quick hover:text-slate-300 transition">60</button>
+                    <button type="button" data-bpm-set="120" class="bpm-quick hover:text-slate-300 transition">120</button>
+                    <button type="button" data-bpm-set="180" class="bpm-quick hover:text-slate-300 transition">180</button>
+                    <button type="button" data-bpm-set="240" class="bpm-quick hover:text-slate-300 transition">240</button>
+                    <button type="button" data-bpm-set="320" class="bpm-quick hover:text-slate-300 transition">320</button>
+                    <button type="button" data-bpm-set="439" class="bpm-quick hover:text-amber-400 text-amber-500/80 transition">439</button>
+                    <button type="button" data-bpm-set="600" class="bpm-quick hover:text-slate-300 transition">600</button>
+                    <button type="button" data-bpm-set="800" class="bpm-quick hover:text-rose-400 transition">800</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Status Footer -->
+        <div class="bg-[#0c0f14] px-4 py-2 border-t border-[#1e2430] flex items-center justify-between text-[11px] text-slate-500">
+            <span id="statusMessage" class="truncate">Ready — WebAudio Sample-Accurate Engine</span>
+            <span class="mono text-[10px] text-slate-600">SPACE: Play/Stop</span>
+        </div>
+    </div>
+
+    <!-- Modal: Hotkeys / About -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-[#151922] border border-[#2c3548] rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-4 py-3 bg-[#1b202c] border-b border-[#283040] flex items-center justify-between">
+                <h3 id="modalTitle" class="text-xs font-bold uppercase tracking-wider text-slate-200">Modal</h3>
+                <button id="btnCloseModal" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-0.5 rounded">✕</button>
+            </div>
+            <div id="modalContent" class="p-4 text-xs text-slate-300 space-y-3">
+                <!-- Dynamic Modal Content -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * OPEN METRONOME STUDIO — SAMPLE-ACCURATE 800 BPM WEB AUDIO ENGINE
+         */
+
+        // --- Application State ---
+        const state = {
+            isPlaying: false,
+            mode: 'simple',          // 'straight' | 'simple' | 'custom'
+            blinkEnabled: true,
+            measureBeats: 4,
+            customPattern: '31212012121',
+            bpm: 439,                // Default matching user screenshot
+            volume: 1.0,             // 0.0 to 1.5
+            isMuted: false,
+            currentStep: 0,
+            activeSequence: [1, 2, 2, 2]
+        };
+
+        // --- Web Audio Engine Variables ---
+        let audioCtx = null;
+        let masterGainNode = null;
+        let noiseBuffer = null;
+        let schedulerTimerId = null;
+        let nextNoteTime = 0.0;
+        const LOOKAHEAD_MS = 15.0;       // How frequently scheduler wakes up (ms)
+        const SCHEDULE_AHEAD_SEC = 0.08; // How far ahead to schedule audio (sec)
+        const visualQueue = [];          // Queue of { stepIndex, soundType, time }
+        let rafId = null;
+
+        // --- Initialize Web Audio Context & Impulse Buffer ---
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContextClass();
+                masterGainNode = audioCtx.createGain();
+                masterGainNode.gain.value = state.isMuted ? 0 : state.volume;
+                masterGainNode.connect(audioCtx.destination);
+
+                // Create ultra-short white noise buffer for crisp transient click snap
+                const sampleRate = audioCtx.sampleRate;
+                const bufferLength = Math.floor(sampleRate * 0.025); // 25ms
+                noiseBuffer = audioCtx.createBuffer(1, bufferLength, sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferLength; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferLength, 2.8);
+                }
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        /**
+         * Synthesize Studio Metronome Sound at exact hardware timestamp `time`
+         * @param {number} soundType - 1 (Hi Woodblock/Accent), 2 (Low Woodblock), 3 (Sub Tick), 0 (Rest)
+         * @param {number} time - audioCtx.currentTime timestamp
+         */
+        function triggerMetronomeSound(soundType, time) {
+            if (!audioCtx || soundType === 0 || state.isMuted || state.volume <= 0.001) return;
+
+            // 1. Primary Accent (Crisp High Studio Woodblock + Transient Snap)
+            if (soundType === 1) {
+                const osc = audioCtx.createOscillator();
+                const oscGain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(1760, time);
+                osc.frequency.exponentialRampToValueAtTime(1180, time + 0.028);
+
+                oscGain.gain.setValueAtTime(0.0001, time);
+                oscGain.gain.linearRampToValueAtTime(1.0, time + 0.0012);
+                oscGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.036);
+
+                osc.connect(oscGain);
+                oscGain.connect(masterGainNode);
+                osc.start(time);
+                osc.stop(time + 0.038);
+
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(3600, time);
+                filter.Q.setValueAtTime(2.5, time);
+
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.65, time);
+                nGain.gain.exponentialRampToValueAtTime(0.001, time + 0.009);
+
+                noise.connect(filter);
+                filter.connect(nGain);
+                nGain.connect(masterGainNode);
+                noise.start(time);
+                noise.stop(time + 0.01);
+            }
+
+            // 2. Normal Beat (Clean Low Woodblock / Tight Studio Click)
+            else if (soundType === 2) {
+                const osc = audioCtx.createOscillator();
+                const oscGain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(1140, time);
+                osc.frequency.exponentialRampToValueAtTime(780, time + 0.028);
+
+                oscGain.gain.setValueAtTime(0.0001, time);
+                oscGain.gain.linearRampToValueAtTime(0.82, time + 0.0012);
+                oscGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.034);
+
+                osc.connect(oscGain);
+                oscGain.connect(masterGainNode);
+                osc.start(time);
+                osc.stop(time + 0.036);
+
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(2400, time);
+                filter.Q.setValueAtTime(2.2, time);
+
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.45, time);
+                nGain.gain.exponentialRampToValueAtTime(0.001, time + 0.008);
+
+                noise.connect(filter);
+                filter.connect(nGain);
+                nGain.connect(masterGainNode);
+                noise.start(time);
+                noise.stop(time + 0.009);
+            }
+
+            // 3. Subdivision / Secondary Accent (Ultra-tight Rim/Stick Tick)
+            else if (soundType === 3) {
+                const osc = audioCtx.createOscillator();
+                const oscGain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(2650, time);
+                osc.frequency.exponentialRampToValueAtTime(1950, time + 0.016);
+
+                oscGain.gain.setValueAtTime(0.0001, time);
+                oscGain.gain.linearRampToValueAtTime(0.55, time + 0.0008);
+                oscGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.018);
+
+                osc.connect(oscGain);
+                oscGain.connect(masterGainNode);
+                osc.start(time);
+                osc.stop(time + 0.02);
+
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.setValueAtTime(4800, time);
+
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.38, time);
+                nGain.gain.exponentialRampToValueAtTime(0.001, time + 0.006);
+
+                noise.connect(filter);
+                filter.connect(nGain);
+                nGain.connect(masterGainNode);
+                noise.start(time);
+                noise.stop(time + 0.007);
+            }
+        }
+
+        // --- Sequence Builder based on Current Mode ---
+        function rebuildSequence() {
+            let seq = [];
+            if (state.mode === 'straight') {
+                seq = [1];
+            } else if (state.mode === 'simple') {
+                const count = Math.max(1, Math.min(64, parseInt(state.measureBeats, 10) || 4));
+                seq.push(1);
+                for (let i = 1; i < count; i++) {
+                    seq.push(2);
+                }
+            } else if (state.mode === 'custom') {
+                const cleaned = (state.customPattern || '').replace(/[^0123]/g, '');
+                if (cleaned.length === 0) {
+                    seq = [1];
+                } else {
+                    seq = cleaned.split('').map(ch => parseInt(ch, 10));
+                }
+            }
+            state.activeSequence = seq;
+            if (state.currentStep >= seq.length) {
+                state.currentStep = 0;
+            }
+            renderSequenceVisualizer();
+        }
+
+        // --- Lookahead Audio Scheduler ---
+        function scheduleNote(stepIndex, time) {
+            const seq = state.activeSequence;
+            const soundType = seq[stepIndex % seq.length];
+            triggerMetronomeSound(soundType, time);
+
+            visualQueue.push({
+                stepIndex: stepIndex % seq.length,
+                soundType: soundType,
+                time: time
+            });
+        }
+
+        function advanceStep() {
+            const secondsPerBeat = 60.0 / Math.max(20, Math.min(800, state.bpm));
+            nextNoteTime += secondsPerBeat;
+            state.currentStep = (state.currentStep + 1) % state.activeSequence.length;
+        }
+
+        function schedulerTick() {
+            while (nextNoteTime < audioCtx.currentTime + SCHEDULE_AHEAD_SEC) {
+                scheduleNote(state.currentStep, nextNoteTime);
+                advanceStep();
+            }
+        }
+
+        // --- Visual Frame Loop ---
+        let ledClearTimeout = null;
+
+        function visualLoop() {
+            if (!state.isPlaying) return;
+
+            const currentTime = audioCtx.currentTime;
+            let latestEvent = null;
+
+            while (visualQueue.length > 0 && visualQueue[0].time <= currentTime) {
+                latestEvent = visualQueue.shift();
+            }
+
+            if (latestEvent) {
+                updateVisualIndicators(latestEvent.stepIndex, latestEvent.soundType);
+            }
+
+            rafId = requestAnimationFrame(visualLoop);
+        }
+
+        function clearAllLeds() {
+            ['led1', 'led2', 'led3', 'led0'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.className = 'led-bulb';
+            });
+            const appWin = document.getElementById('appWindow');
+            appWin.style.borderColor = '#283040';
+        }
+
+        function updateVisualIndicators(stepIndex, soundType) {
+            const total = state.activeSequence.length;
+            document.getElementById('currentStepText').textContent = `${stepIndex + 1} / ${total}`;
+
+            const pills = document.querySelectorAll('.seq-step-pill');
+            pills.forEach((pill, idx) => {
+                if (idx === stepIndex) {
+                    pill.classList.add('ring-2', 'ring-white', 'scale-105', 'brightness-125');
+                } else {
+                    pill.classList.remove('ring-2', 'ring-white', 'scale-105', 'brightness-125');
+                }
+            });
+
+            clearAllLeds();
+            if (state.blinkEnabled) {
+                const targetLed = document.getElementById(`led${soundType}`);
+                if (targetLed) {
+                    targetLed.classList.add(`led-active-${soundType}`);
+                }
+
+                if (soundType === 1) {
+                    document.getElementById('appWindow').style.borderColor = '#f59e0b';
+                }
+
+                const beatMs = (60 / state.bpm) * 1000;
+                const flashDuration = Math.max(22, Math.min(95, beatMs * 0.55));
+
+                if (ledClearTimeout) clearTimeout(ledClearTimeout);
+                ledClearTimeout = setTimeout(() => {
+                    clearAllLeds();
+                }, flashDuration);
+            }
+        }
+
+        // --- Start / Stop Controls ---
+        function startMetronome() {
+            initAudio();
+            rebuildSequence();
+            state.isPlaying = true;
+            state.currentStep = 0;
+            visualQueue.length = 0;
+
+            nextNoteTime = audioCtx.currentTime + 0.015;
+            schedulerTimerId = setInterval(schedulerTick, LOOKAHEAD_MS);
+            rafId = requestAnimationFrame(visualLoop);
+
+            updatePlayButtonUI();
+            setStatus(`Playing ${state.bpm} BPM (${state.mode.toUpperCase()})`);
+        }
+
+        function stopMetronome() {
+            state.isPlaying = false;
+            if (schedulerTimerId) {
+                clearInterval(schedulerTimerId);
+                schedulerTimerId = null;
+            }
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+            visualQueue.length = 0;
+            clearAllLeds();
+            document.getElementById('currentStepText').textContent = `- / ${state.activeSequence.length}`;
+
+            const pills = document.querySelectorAll('.seq-step-pill');
+            pills.forEach(p => p.classList.remove('ring-2', 'ring-white', 'scale-105', 'brightness-125'));
+
+            updatePlayButtonUI();
+            setStatus('Stopped');
+        }
+
+        function toggleMetronome() {
+            if (state.isPlaying) {
+                stopMetronome();
+            } else {
+                startMetronome();
+            }
+        }
+
+        function updatePlayButtonUI() {
+            const btn = document.getElementById('btnPlay');
+            const iconPlay = document.getElementById('iconPlay');
+            const iconStop = document.getElementById('iconStop');
+            const txtPlay = document.getElementById('txtPlay');
+
+            if (state.isPlaying) {
+                iconPlay.classList.add('hidden');
+                iconStop.classList.remove('hidden');
+                txtPlay.textContent = 'Stop';
+                btn.className = "w-24 sm:w-28 shrink-0 rounded-xl font-bold text-sm tracking-wide flex flex-col items-center justify-center gap-1.5 border transition-all duration-150 shadow-lg bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-[0.98] text-slate-950 border-amber-300/60 shadow-amber-950/50";
+            } else {
+                iconPlay.classList.remove('hidden');
+                iconStop.classList.add('hidden');
+                txtPlay.textContent = 'Play';
+                btn.className = "w-24 sm:w-28 shrink-0 rounded-xl font-bold text-sm tracking-wide flex flex-col items-center justify-center gap-1.5 border transition-all duration-150 shadow-lg bg-gradient-to-b from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 active:scale-[0.98] text-slate-950 border-sky-400/50 shadow-sky-950/50";
+            }
+        }
+
+        // --- Render Sequence Step Visualizer ---
+        function renderSequenceVisualizer() {
+            const container = document.getElementById('sequenceVisualizer');
+            container.innerHTML = '';
+
+            const seq = state.activeSequence;
+            const colorMap = {
+                1: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                2: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+                3: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                0: 'bg-slate-800/70 text-slate-500 border-slate-700'
+            };
+
+            seq.forEach((soundType, idx) => {
+                const pill = document.createElement('button');
+                pill.type = 'button';
+                pill.title = `Step ${idx + 1}: Sound ${soundType} (Click to cycle in Custom mode)`;
+                pill.className = `seq-step-pill shrink-0 min-w-[24px] h-6 px-1.5 rounded mono text-xs font-bold border transition-all flex items-center justify-center ${colorMap[soundType] || colorMap[2]}`;
+                pill.textContent = soundType;
+
+                pill.addEventListener('click', () => {
+                    const nextMap = { 1: 2, 2: 3, 3: 0, 0: 1 };
+                    const updatedSeq = [...state.activeSequence];
+                    updatedSeq[idx] = nextMap[soundType] ?? 1;
+                    state.customPattern = updatedSeq.join('');
+                    document.getElementById('inputCustom').value = state.customPattern;
+                    setMode('custom');
+                });
+
+                container.appendChild(pill);
+            });
+
+            if (!state.isPlaying) {
+                document.getElementById('currentStepText').textContent = `- / ${seq.length}`;
+            }
+        }
+
+        // --- Mode & Tempo Setters ---
+        function setMode(newMode) {
+            state.mode = newMode;
+            const radios = document.querySelectorAll('input[name="metroMode"]');
+            radios.forEach(r => {
+                r.checked = (r.value === newMode);
+            });
+            rebuildSequence();
+        }
+
+        function setBpm(value) {
+            const clamped = Math.max(20, Math.min(800, Math.round(Number(value) || 120)));
+            state.bpm = clamped;
+            document.getElementById('sliderBpm').value = clamped;
+            document.getElementById('inputBpm').value = clamped;
+            if (state.isPlaying) {
+                setStatus(`Playing ${state.bpm} BPM (${state.mode.toUpperCase()})`);
+            }
+        }
+
+        function setVolume(percent) {
+            const clamped = Math.max(0, Math.min(150, Math.round(Number(percent) || 0)));
+            state.volume = clamped / 100;
+            state.isMuted = (clamped === 0);
+            document.getElementById('sliderVolume').value = clamped;
+            document.getElementById('txtVolume').textContent = state.isMuted ? 'MUTE' : `${clamped}%`;
+
+            const btnMute = document.getElementById('btnMute');
+            if (state.isMuted) {
+                btnMute.classList.add('bg-rose-500/20', 'text-rose-300', 'border-rose-500/40');
+                btnMute.textContent = 'Unmute';
+            } else {
+                btnMute.classList.remove('bg-rose-500/20', 'text-rose-300', 'border-rose-500/40');
+                btnMute.textContent = 'Mute';
+            }
+
+            if (masterGainNode && audioCtx) {
+                masterGainNode.gain.setTargetAtTime(state.isMuted ? 0 : state.volume, audioCtx.currentTime, 0.01);
+            }
+        }
+
+        function setStatus(msg) {
+            document.getElementById('statusMessage').textContent = msg;
+        }
+
+        // --- Tap Tempo Logic ---
+        let tapTimes = [];
+        function handleTapTempo() {
+            initAudio();
+            triggerMetronomeSound(1, audioCtx.currentTime);
+            const now = performance.now();
+
+            if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2200) {
+                tapTimes = [];
+            }
+            tapTimes.push(now);
+            if (tapTimes.length > 6) tapTimes.shift();
+
+            if (tapTimes.length >= 2) {
+                let intervals = 0;
+                for (let i = 1; i < tapTimes.length; i++) {
+                    intervals += (tapTimes[i] - tapTimes[i - 1]);
+                }
+                const avgMs = intervals / (tapTimes.length - 1);
+                const tappedBpm = Math.round(60000 / avgMs);
+                setBpm(tappedBpm);
+                setStatus(`Tap Tempo: ${state.bpm} BPM`);
+            } else {
+                setStatus('Tap again to calculate tempo...');
+            }
+        }
+
+        // --- Modal Helper ---
+        function openModal(title, htmlContent) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalContent').innerHTML = htmlContent;
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+        }
+
+        // --- Event Listeners Setup ---
+        window.addEventListener('DOMContentLoaded', () => {
+            rebuildSequence();
+
+            // Play / Stop Button
+            document.getElementById('btnPlay').addEventListener('click', toggleMetronome);
+
+            // Mode Radio Buttons
+            document.querySelectorAll('input[name="metroMode"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    setMode(e.target.value);
+                });
+            });
+
+            // Blink Checkbox
+            document.getElementById('chkBlink').addEventListener('change', (e) => {
+                state.blinkEnabled = e.target.checked;
+                if (!state.blinkEnabled) clearAllLeds();
+            });
+
+            // Simple Measure Stepper & Input
+            const inputMeasure = document.getElementById('inputMeasure');
+            inputMeasure.addEventListener('input', () => {
+                state.measureBeats = Math.max(1, Math.min(64, parseInt(inputMeasure.value, 10) || 4));
+                setMode('simple');
+            });
+
+            document.getElementById('btnMeasureDec').addEventListener('click', () => {
+                state.measureBeats = Math.max(1, (parseInt(inputMeasure.value, 10) || 4) - 1);
+                inputMeasure.value = state.measureBeats;
+                setMode('simple');
+            });
+
+            document.getElementById('btnMeasureInc').addEventListener('click', () => {
+                state.measureBeats = Math.min(64, (parseInt(inputMeasure.value, 10) || 4) + 1);
+                inputMeasure.value = state.measureBeats;
+                setMode('simple');
+            });
+
+            // Custom Pattern Input
+            const inputCustom = document.getElementById('inputCustom');
+            inputCustom.addEventListener('focus', () => {
+                setMode('custom');
+            });
+            inputCustom.addEventListener('input', () => {
+                const filtered = inputCustom.value.replace(/[^0123]/g, '');
+                if (inputCustom.value !== filtered) {
+                    inputCustom.value = filtered;
+                }
+                state.customPattern = filtered || '1';
+                setMode('custom');
+            });
+
+            // Quick Pattern Chips
+            document.querySelectorAll('.pattern-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const pat = chip.getAttribute('data-pattern');
+                    inputCustom.value = pat;
+                    state.customPattern = pat;
+                    setMode('custom');
+                    setStatus(`Pattern set to ${pat}`);
+                });
+            });
+
+            // Voice Preview Buttons
+            document.querySelectorAll('.voice-preview-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    initAudio();
+                    const voice = parseInt(btn.getAttribute('data-preview'), 10);
+                    triggerMetronomeSound(voice, audioCtx.currentTime);
+                    updateVisualIndicators(0, voice);
+                });
+            });
+
+            // Volume Slider & Mute
+            let previousVolumePercent = 100;
+            document.getElementById('sliderVolume').addEventListener('input', (e) => {
+                setVolume(e.target.value);
+            });
+
+            document.getElementById('btnMute').addEventListener('click', () => {
+                if (state.isMuted || state.volume === 0) {
+                    setVolume(previousVolumePercent || 100);
+                } else {
+                    previousVolumePercent = Math.round(state.volume * 100);
+                    setVolume(0);
+                }
+            });
+
+            // Tempo Slider & Numeric Input
+            document.getElementById('sliderBpm').addEventListener('input', (e) => {
+                setBpm(e.target.value);
+            });
+
+            const inputBpm = document.getElementById('inputBpm');
+            inputBpm.addEventListener('change', () => {
+                setBpm(inputBpm.value);
+            });
+            inputBpm.addEventListener('input', () => {
+                const val = parseInt(inputBpm.value, 10);
+                if (val >= 20 && val <= 800) {
+                    state.bpm = val;
+                    document.getElementById('sliderBpm').value = val;
+                }
+            });
+
+            // Fine BPM Nudge Buttons
+            document.querySelectorAll('.bpm-nudge').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const delta = parseInt(btn.getAttribute('data-bpm-delta'), 10);
+                    setBpm(state.bpm + delta);
+                });
+            });
+
+            // Quick BPM Jump Markers
+            document.querySelectorAll('.bpm-quick').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setBpm(btn.getAttribute('data-bpm-set'));
+                });
+            });
+
+            // Tap Tempo
+            document.getElementById('btnTap').addEventListener('click', handleTapTempo);
+
+            // Hotkeys Modal
+            document.getElementById('btnHotkeys').addEventListener('click', () => {
+                openModal('Keyboard Shortcuts & Pattern Guide', `
+                    <div class="space-y-2">
+                        <div class="flex justify-between py-1 border-b border-slate-800"><span>Play / Stop</span><kbd class="mono text-amber-400">Spacebar</kbd></div>
+                        <div class="flex justify-between py-1 border-b border-slate-800"><span>Tempo +/- 1 BPM</span><kbd class="mono text-amber-400">↑ / ↓ Arrows</kbd></div>
+                        <div class="flex justify-between py-1 border-b border-slate-800"><span>Tempo +/- 10 BPM</span><kbd class="mono text-amber-400">Shift + ↑ / ↓</kbd></div>
+                        <div class="flex justify-between py-1 border-b border-slate-800"><span>Tap Tempo</span><kbd class="mono text-amber-400">T</kbd></div>
+                        <div class="flex justify-between py-1 border-b border-slate-800"><span>Mute / Unmute</span><kbd class="mono text-amber-400">M</kbd></div>
+                    </div>
+                    <div class="pt-2 space-y-1 text-slate-400">
+                        <p class="font-semibold text-slate-200">Custom Pattern Digits:</p>
+                        <p><strong class="text-amber-400 mono">1</strong> = Primary High Woodblock Accent</p>
+                        <p><strong class="text-sky-400 mono">2</strong> = Standard Low Woodblock Beat</p>
+                        <p><strong class="text-emerald-400 mono">3</strong> = Tight Subdivision / Ghost Tick</p>
+                        <p><strong class="text-slate-400 mono">0</strong> = Silent Rest Step</p>
+                    </div>
+                `);
+            });
+
+            // About Modal
+            document.getElementById('btnAbout').addEventListener('click', () => {
+                openModal('About Open Metronome Studio', `
+                    <p class="leading-relaxed">Inspired by the classic desktop <strong>Open Metronome</strong> utility, modernized with a zero-jitter Web Audio API lookahead scheduler capable of up to <strong>800 BPM</strong>.</p>
+                    <p class="leading-relaxed text-slate-400">All woodblock and studio click transients are synthesized mathematically in real time for maximum clarity and zero sample-loading latency.</p>
+                `);
+            });
+
+            document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+            document.getElementById('modalOverlay').addEventListener('click', (e) => {
+                if (e.target.id === 'modalOverlay') closeModal();
+            });
+
+            // Global Keyboard Shortcuts
+            window.addEventListener('keydown', (e) => {
+                const tag = document.activeElement?.tagName;
+                const isInput = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+
+                if (e.code === 'Space' && !isInput) {
+                    e.preventDefault();
+                    toggleMetronome();
+                } else if (e.code === 'ArrowUp' && !isInput) {
+                    e.preventDefault();
+                    setBpm(state.bpm + (e.shiftKey ? 10 : 1));
+                } else if (e.code === 'ArrowDown' && !isInput) {
+                    e.preventDefault();
+                    setBpm(state.bpm - (e.shiftKey ? 10 : 1));
+                } else if (e.key.toLowerCase() === 't' && !isInput) {
+                    e.preventDefault();
+                    handleTapTempo();
+                } else if (e.key.toLowerCase() === 'm' && !isInput) {
+                    e.preventDefault();
+                    document.getElementById('btnMute').click();
+                } else if (e.key === 'Escape') {
+                    closeModal();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
